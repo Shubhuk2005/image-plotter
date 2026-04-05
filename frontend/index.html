@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Image Plotter — Image to G-code Converter</title>
+  <meta name="description" content="Convert images to pen-plotter G-code and 3D-printable STL with FDM slicing. Full pipeline: Image → SVG → G-code → STL → Slice." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234f7cff'/><path d='M8 24L16 8L24 24' stroke='white' stroke-width='2.5' fill='none'/></svg>" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div class="app-wrapper">
+
+  <!-- ── Header ─────────────────────────────────────────────────── -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🖊</div>
+      <div>
+        <div class="logo-text">Image Plotter</div>
+        <div class="logo-sub">Image → SVG → G-code → STL → FDM Slice</div>
+      </div>
+    </div>
+    <span class="header-badge" id="backend-badge">⬤  Checking backend…</span>
+  </header>
+
+  <!-- ── Pipeline stages bar ───────────────────────────────────── -->
+  <div class="pipeline-bar" id="pipeline-bar">
+    <div class="pipe-stage" id="ps-input">🖼️ Input</div>
+    <div class="pipe-arrow">›</div>
+    <div class="pipe-stage" id="ps-preprocess">⚙️ Preprocess</div>
+    <div class="pipe-arrow">›</div>
+    <div class="pipe-stage" id="ps-trace">📐 SVG Trace</div>
+    <div class="pipe-arrow">›</div>
+    <div class="pipe-stage" id="ps-gcode">✏️ Pen G-code</div>
+    <div class="pipe-arrow">›</div>
+    <div class="pipe-stage" id="ps-stl">🧊 STL</div>
+    <div class="pipe-arrow">›</div>
+    <div class="pipe-stage" id="ps-slice">🔪 FDM Slice</div>
+    <div class="pipe-arrow">›</div>
+    <div class="pipe-stage" id="ps-done">⬇️ Download</div>
+  </div>
+
+  <!-- ── Main ───────────────────────────────────────────────────── -->
+  <main>
+
+    <!-- LEFT COLUMN -->
+    <aside>
+
+      <!-- Upload card -->
+      <div class="card">
+        <div class="card-title">Input Image</div>
+        <div class="upload-zone" id="upload-zone" role="button" aria-label="Upload image">
+          <div class="upload-icon">📁</div>
+          <p><span>Click to upload</span> or drag &amp; drop</p>
+          <p class="upload-hint">PNG, JPG, BMP, WebP · Max 20 MB · paste from clipboard</p>
+        </div>
+        <input type="file" id="file-input" accept="image/*" aria-label="File input" />
+        <div class="divider">OR</div>
+        <div class="input-group">
+          <label for="url-input">Image URL</label>
+          <input type="url" id="url-input" placeholder="https://example.com/image.png" autocomplete="off" />
+        </div>
+        <div class="divider">OR</div>
+        <button class="btn btn-secondary" id="demo-btn" type="button" style="width:100%;margin-top:0">
+          🎨&nbsp; Try Demo (built-in test image)
+        </button>
+      </div>
+
+      <!-- Pen plotter settings -->
+      <div class="card">
+        <div class="card-title">Pen Plotter Settings</div>
+        <div class="settings-grid">
+          <div class="input-group">
+            <label for="bed-width">Bed Width (mm)</label>
+            <input type="number" id="bed-width" value="220" min="10" max="1000" />
+          </div>
+          <div class="input-group">
+            <label for="bed-height">Bed Height (mm)</label>
+            <input type="number" id="bed-height" value="220" min="10" max="1000" />
+          </div>
+          <div class="input-group">
+            <label for="pen-up-z">Pen Up Z (mm)</label>
+            <input type="number" id="pen-up-z" value="5" min="0.1" max="50" step="0.5" />
+          </div>
+          <div class="input-group">
+            <label for="pen-down-z">Pen Down Z (mm)</label>
+            <input type="number" id="pen-down-z" value="0" min="-10" max="10" step="0.5" />
+          </div>
+          <div class="input-group">
+            <label for="margin">Margin (mm)</label>
+            <input type="number" id="margin" value="5" min="0" max="50" />
+          </div>
+          <div class="input-group">
+            <label for="max-dim">Max Image Dim (px)</label>
+            <input type="number" id="max-dim" value="1024" min="128" max="4096" step="64" />
+          </div>
+        </div>
+        <div class="input-group" style="margin-top:8px">
+          <label for="feed-rate">Drawing Speed — <span id="feed-rate-val">3000</span> mm/min</label>
+          <div class="range-row"><input type="range" id="feed-rate" min="100" max="9000" step="100" value="3000" /></div>
+        </div>
+        <div class="input-group">
+          <label for="travel-rate">Travel Speed — <span id="travel-rate-val">6000</span> mm/min</label>
+          <div class="range-row"><input type="range" id="travel-rate" min="100" max="12000" step="100" value="6000" /></div>
+        </div>
+      </div>
+
+      <!-- FDM / STL settings -->
+      <div class="card">
+        <div class="collapsible-header" data-target="fdm-body">
+          <span class="card-title" style="margin-bottom:0">🧊 STL &amp; FDM Slicer Settings</span>
+          <span class="collapse-arrow">▼</span>
+        </div>
+        <div class="collapsible-body" id="fdm-body">
+          <div style="height:14px"></div>
+          <div class="settings-grid">
+            <div class="input-group">
+              <label for="layer-height">Layer Height (mm)</label>
+              <input type="number" id="layer-height" value="0.2" min="0.05" max="0.5" step="0.05" />
+            </div>
+            <div class="input-group">
+              <label for="trace-height">Trace Height (mm)</label>
+              <input type="number" id="trace-height" value="2.0" min="0.2" max="10" step="0.2" />
+            </div>
+            <div class="input-group">
+              <label for="pen-width-mm">Line Width (mm)</label>
+              <input type="number" id="pen-width-mm" value="0.5" min="0.1" max="2.0" step="0.05" />
+            </div>
+            <div class="input-group">
+              <label for="filament-dia">Filament Ø (mm)</label>
+              <input type="number" id="filament-dia" value="1.75" min="1.0" max="3.0" step="0.05" />
+            </div>
+            <div class="input-group">
+              <label for="hotend-temp">Hotend Temp (°C)</label>
+              <input type="number" id="hotend-temp" value="200" min="150" max="300" step="5" />
+            </div>
+            <div class="input-group">
+              <label for="bed-temp-fdm">Bed Temp (°C)</label>
+              <input type="number" id="bed-temp-fdm" value="60" min="0" max="120" step="5" />
+            </div>
+          </div>
+          <div class="input-group" style="display:flex;align-items:center;gap:10px;margin-top:6px">
+            <input type="checkbox" id="gen-stl" checked style="width:auto;accent-color:var(--accent)" />
+            <label for="gen-stl" style="margin-bottom:0;cursor:pointer">Generate STL mesh</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Image processing -->
+      <div class="card">
+        <div class="collapsible-header" data-target="proc-body">
+          <span class="card-title" style="margin-bottom:0">⚙️ Image Processing &amp; Tracing</span>
+          <span class="collapse-arrow">▼</span>
+        </div>
+        <div class="collapsible-body" id="proc-body">
+          <div style="height:14px"></div>
+          <div class="settings-grid">
+            <div class="input-group">
+              <label for="threshold-mode">Threshold Mode</label>
+              <select id="threshold-mode">
+                <option value="auto" selected>Auto (Otsu)</option>
+                <option value="canny">Canny Edge</option>
+                <option value="binary">Fixed Binary</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label for="backend-mode">Tracer Backend</label>
+              <select id="backend-mode">
+                <option value="auto" selected>Auto (Potrace → OpenCV)</option>
+                <option value="potrace">Potrace only</option>
+                <option value="opencv">OpenCV only</option>
+              </select>
+            </div>
+          </div>
+          <div class="settings-grid" id="canny-options" style="display:none">
+            <div class="input-group">
+              <label for="canny-low">Canny Low</label>
+              <input type="number" id="canny-low" value="50" min="0" max="255" />
+            </div>
+            <div class="input-group">
+              <label for="canny-high">Canny High</label>
+              <input type="number" id="canny-high" value="150" min="0" max="255" />
+            </div>
+          </div>
+          <div class="input-group">
+            <label for="blur-radius">Blur Radius — <span id="blur-radius-val">1</span></label>
+            <div class="range-row"><input type="range" id="blur-radius" min="0" max="10" step="1" value="1" /></div>
+          </div>
+          <div class="input-group">
+            <label for="min-area">Min Contour Area (px²) — <span id="min-area-val">10</span></label>
+            <div class="range-row"><input type="range" id="min-area" min="1" max="500" step="1" value="10" /></div>
+          </div>
+          <div class="input-group" style="display:flex;align-items:center;gap:10px;margin-top:4px">
+            <input type="checkbox" id="invert-img" style="width:auto;accent-color:var(--accent)" />
+            <label for="invert-img" style="margin-bottom:0;cursor:pointer">Invert image</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Convert button -->
+      <button class="btn btn-primary" id="convert-btn" type="button">
+        ⚡&nbsp; Run Full Pipeline
+      </button>
+
+    </aside>
+
+    <!-- RIGHT COLUMN -->
+    <section>
+
+      <!-- Preview tabs -->
+      <div class="card">
+        <div class="card-title">Preview</div>
+        <div class="preview-tabs" role="tablist">
+          <button class="tab-btn active" data-tab="tab-orig"     role="tab">Original</button>
+          <button class="tab-btn"        data-tab="tab-proc"     role="tab">Processed</button>
+          <button class="tab-btn"        data-tab="tab-toolpath" role="tab">Toolpath</button>
+          <button class="tab-btn"        data-tab="tab-animate"  role="tab">Animation</button>
+        </div>
+        <div class="tab-content active" id="tab-orig">
+          <div class="preview-image-wrap">
+            <div class="preview-empty"><div class="preview-empty-icon">🖼️</div>Upload an image to preview</div>
+            <img id="preview-orig-img" alt="Original" style="display:none" />
+          </div>
+        </div>
+        <div class="tab-content" id="tab-proc">
+          <div class="preview-image-wrap">
+            <div class="preview-empty"><div class="preview-empty-icon">⬛</div>Processed binary will appear here</div>
+            <img id="preview-proc-img" alt="Processed" style="display:none" />
+          </div>
+        </div>
+        <div class="tab-content" id="tab-toolpath">
+          <div class="preview-image-wrap">
+            <div class="preview-empty"><div class="preview-empty-icon">🗺️</div>Toolpath map after conversion</div>
+            <img id="preview-toolpath-img" alt="Toolpath" style="display:none" />
+          </div>
+        </div>
+        <div class="tab-content" id="tab-animate">
+          <canvas id="toolpath-canvas" width="560" height="560" aria-label="Live toolpath animation"></canvas>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="card">
+        <div class="card-title">Conversion Stats</div>
+        <div class="stats-bar" id="stats-bar">
+          <span style="color:var(--text-dim);font-size:0.82rem">Run a conversion to see stats</span>
+        </div>
+      </div>
+
+      <!-- G-code viewer with tabs -->
+      <div class="card">
+        <div class="card-title">G-code Preview</div>
+        <div class="preview-tabs" role="tablist" style="margin-bottom:12px">
+          <button class="tab-btn active" data-tab="tab-pen-gcode"  role="tab">✏️ Pen Plotter</button>
+          <button class="tab-btn"        data-tab="tab-fdm-gcode"  role="tab">🔪 FDM Sliced</button>
+        </div>
+        <div class="tab-content active" id="tab-pen-gcode">
+          <div class="gcode-preview" id="gcode-view-pen" aria-label="Pen plotter G-code">
+<span class="gc-comment">; Pen-plotter G-code will appear here…</span>
+          </div>
+        </div>
+        <div class="tab-content" id="tab-fdm-gcode">
+          <div class="gcode-preview" id="gcode-view-fdm" aria-label="FDM sliced G-code">
+<span class="gc-comment">; FDM sliced G-code will appear here…</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Downloads -->
+      <div class="card">
+        <div class="card-title">Downloads</div>
+        <div class="download-grid" id="download-grid">
+
+          <div class="dl-item">
+            <div class="dl-info">
+              <span class="dl-icon">✏️</span>
+              <div>
+                <div class="dl-name">Pen Plotter G-code</div>
+                <div class="dl-meta" id="dl-meta-pen">No file yet</div>
+              </div>
+            </div>
+            <a class="btn btn-success dl-anchor" id="dl-pen-btn"
+               href="#" download="plotter_pen.gcode"
+               aria-disabled="true">&#8595; .gcode</a>
+          </div>
+
+          <div class="dl-item">
+            <div class="dl-info">
+              <span class="dl-icon">🔪</span>
+              <div>
+                <div class="dl-name">FDM Sliced G-code</div>
+                <div class="dl-meta" id="dl-meta-fdm">No file yet</div>
+              </div>
+            </div>
+            <a class="btn btn-success dl-anchor" id="dl-fdm-btn"
+               href="#" download="plotter_fdm_sliced.gcode"
+               aria-disabled="true">&#8595; .gcode</a>
+          </div>
+
+          <div class="dl-item">
+            <div class="dl-info">
+              <span class="dl-icon">🧊</span>
+              <div>
+                <div class="dl-name">STL Mesh</div>
+                <div class="dl-meta" id="dl-meta-stl">No file yet</div>
+              </div>
+            </div>
+            <a class="btn btn-secondary dl-anchor" id="dl-stl-btn"
+               href="#" download="plotter.stl"
+               aria-disabled="true">&#8595; .stl</a>
+          </div>
+
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <footer>
+    Image Plotter — Full pipeline: Image → SVG → G-code → STL → FDM Slice &nbsp;·&nbsp; Auto-saves to Downloads
+  </footer>
+
+</div>
+
+<!-- Loader overlay -->
+<div class="loader-overlay" id="loader-overlay" role="status" aria-live="polite">
+  <div class="loader-spinner"></div>
+  <div class="loader-steps">
+    <div class="loader-dot"></div>
+    <div class="loader-dot"></div>
+    <div class="loader-dot"></div>
+  </div>
+  <div class="loader-text" id="loader-text">Running pipeline…</div>
+  <div class="loader-sub" id="loader-sub"></div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toast-container" aria-live="assertive"></div>
+
+<script type="module" src="js/main.js?v=5"></script>
+</body>
+</html>

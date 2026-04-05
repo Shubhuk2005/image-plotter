@@ -1,0 +1,9 @@
+flask
+flask-cors
+Pillow
+opencv-python-headless
+numpy
+svgpathtools
+requests
+trimesh
+shapely
