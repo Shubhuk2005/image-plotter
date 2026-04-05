@@ -52,6 +52,15 @@ python backend/app.py
 
 This app is ready to deploy to platforms like **Render**, **Railway**, **Fly.io**, or any Docker-compatible hosting environment. 
 
+### Render Blueprint
+This repo includes a `render.yaml` so you can create the backend as a Render web service directly from GitHub. The Docker image now honors Render's injected `PORT` automatically.
+
+Quick steps:
+1. In Render, click `New` -> `Blueprint`.
+2. Connect the GitHub repo `Shubhuk2005/image-plotter`.
+3. Select the `main` branch and deploy.
+4. Open the generated `onrender.com` URL and verify `/api/health`.
+
 ### Docker Deployment
 A `Dockerfile` is included. It provisions the environment, installs system dependencies like `potrace` for ultra-smooth tracing, and runs the app securely via `gunicorn`:
 

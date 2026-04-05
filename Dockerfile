@@ -20,7 +20,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application code
 COPY . .
 
-# Expose port (default Flask/Gunicorn port)
+# Expose the default local port; hosted platforms can override this with $PORT.
 EXPOSE 5000
 
 # Set environment variables
@@ -29,4 +29,4 @@ ENV FLASK_APP=backend/app.py
 ENV FLASK_ENV=production
 
 # Run the application using Gunicorn for production
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "backend.app:app"]
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 2 --timeout 120 backend.app:app"]

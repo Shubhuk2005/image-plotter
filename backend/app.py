@@ -40,12 +40,21 @@ _BROWSER_HEADERS = {
 }
 
 # ── Pipeline modules ──────────────────────────────────────────────────────────
-from pipeline import (
-    preprocess_image, trace_to_svg, optimize_paths, generate_gcode,
-    polylines_to_stl, stl_available,
-    slice_to_fdm_gcode, slicer_stats,
-)
-from utils import scale_polylines
+try:
+    from .pipeline import (
+        preprocess_image, trace_to_svg, optimize_paths, generate_gcode,
+        polylines_to_stl, stl_available,
+        slice_to_fdm_gcode, slicer_stats,
+    )
+    from .utils import scale_polylines
+except ImportError:
+    # Support direct script execution via `python backend/app.py`.
+    from pipeline import (
+        preprocess_image, trace_to_svg, optimize_paths, generate_gcode,
+        polylines_to_stl, stl_available,
+        slice_to_fdm_gcode, slicer_stats,
+    )
+    from utils import scale_polylines
 
 # ── Resolve repository root ───────────────────────────────────────────────────
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
