@@ -2,6 +2,8 @@
 
 A modern, full-stack web application that converts images into optimized G-code for 2D Pen Plotters and 3D Printers (FDM machines).
 
+The main `index.html` entry file lives at the repository root so it can be used directly by GitHub-friendly static hosting layouts.
+
 ## Features
 
 - **End-to-End Pipeline**: Image \u2192 Preprocess \u2192 SVG Trace \u2192 Polyline Optimization \u2192 Slicing \u2192 G-code & STL.

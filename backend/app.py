@@ -13,8 +13,8 @@ Routes
 ------
 POST /api/convert           — full pipeline, returns all artefacts as JSON
 GET  /api/health            — health check
-GET  /                      — serves frontend index.html
-GET  /<path:filename>       — serves frontend static assets
+GET  /                      — serves root index.html
+GET  /<path:filename>       — serves repository static assets
 """
 
 import io
@@ -47,8 +47,8 @@ from pipeline import (
 )
 from utils import scale_polylines
 
-# ── Resolve frontend directory ────────────────────────────────────────────────
-FRONTEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend"))
+# ── Resolve repository root ───────────────────────────────────────────────────
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 # ── Flask app ─────────────────────────────────────────────────────────────────
 app = Flask(__name__)
@@ -102,13 +102,13 @@ def download_file(filetype: str):
 
 @app.get("/")
 def index():
-    resp = send_from_directory(FRONTEND_DIR, "index.html")
+    resp = send_from_directory(REPO_ROOT, "index.html")
     resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     return resp
 
 @app.get("/<path:filename>")
 def static_files(filename):
-    resp = send_from_directory(FRONTEND_DIR, filename)
+    resp = send_from_directory(REPO_ROOT, filename)
     # Never cache JS or CSS — always serve fresh
     if filename.endswith((".js", ".css")):
         resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
